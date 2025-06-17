@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -9,6 +10,12 @@ import uuid
 import os
 
 app = FastAPI()
+
+# Statik fayllar uchun papka
+if not os.path.exists("streams"):
+    os.makedirs("streams")
+
+app.mount("/streams", StaticFiles(directory="streams"), name="streams")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/streamdb")
 engine = create_engine(DATABASE_URL)
@@ -38,7 +45,7 @@ def stream_video(req: StreamRequest, request: Request):
     stream_id = str(uuid.uuid4())
     output_dir = f"streams/{stream_id}"
     os.makedirs(output_dir, exist_ok=True)
-    
+
     command = [
         "ffmpeg",
         "-i", req.rtsp_url,
@@ -47,5 +54,5 @@ def stream_video(req: StreamRequest, request: Request):
         f"{output_dir}/index.m3u8"
     ]
     subprocess.Popen(command)
-    
+
     return {"hls_url": f"/streams/{stream_id}/index.m3u8"}
